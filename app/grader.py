@@ -1,5 +1,12 @@
 from typing import Dict, Tuple
 
+def clamp_score(score: float) -> float:
+    """
+    Ensures the score is strictly between 0 and 1.
+    Converts 1.0 to 0.99 and 0.0 to 0.01 to satisfy Phase 2 validation.
+    """
+    return max(0.01, min(0.99, round(score, 2)))
+
 def grade_action(action: Dict, task_id: str, step: int, remaining_budget: int = 100000) -> Tuple[float, str]:
     score = 0.0
     feedback = ""
@@ -12,7 +19,7 @@ def grade_action(action: Dict, task_id: str, step: int, remaining_budget: int = 
 
     # STRICT BUDGET ENFORCEMENT
     if remaining_budget < 0:
-        return 0.0, f"BANKRUPTCY. You overspent the logistics budget by ${abs(remaining_budget):,}. Operation failed."
+        return 0.01, f"BANKRUPTCY. You overspent the logistics budget by ${abs(remaining_budget):,}. Operation failed."
 
     if task_id == "triage_basic":
         if threat_level == "high":
@@ -59,6 +66,10 @@ def grade_action(action: Dict, task_id: str, step: int, remaining_budget: int = 
         score = 0.0
         feedback = "Unknown task ID."
 
+    # Apply efficiency penalty
     penalty = min(0.2, (step - 1) * 0.05)
-    final_score = max(0.0, round(score - penalty, 2))
+
+    # Calculate final score and apply the (0, 1) clamp
+    final_score = clamp_score(score - penalty)
+
     return final_score, feedback
