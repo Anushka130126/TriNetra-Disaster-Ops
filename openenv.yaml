@@ -1,0 +1,13 @@
+name: disaster-response-ops
+version: "1.0.0"
+description: "A high-fidelity disaster response triage and resource allocation environment to evaluate agent decision-making under crisis conditions and conflicting intelligence."
+tasks:
+  - id: triage_basic
+    name: "Basic Threat Triage"
+    difficulty: easy
+  - id: resource_allocation
+    name: "Constrained Resource Allocation"
+    difficulty: medium
+  - id: signal_vs_noise
+    name: "Signal vs Noise Crisis Detection"
+    difficulty: hard

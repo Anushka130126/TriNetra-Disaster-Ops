@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TriNetra | AI Crisis Ops</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --bg-main: #09090b; --bg-panel: #18181b; --text-main: #fafafa; --text-muted: #a1a1aa;
+            --accent: #3b82f6; --danger: #ef4444; --warning: #eab308; --success: #22c55e; --border: #27272a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: var(--bg-main); color: var(--text-main); font-family: 'Inter', sans-serif; padding: 20px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid var(--border); margin-bottom: 15px; }
+        .brand h1 { font-weight: 800; font-size: 1.5rem; letter-spacing: -0.05em; display: flex; align-items: center; gap: 10px; }
+        .badge { background: var(--accent); color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; }
+        .controls { display: flex; gap: 10px; align-items: center; }
+        button, select { background: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; cursor: pointer; transition: all 0.2s; }
+        button:hover { background: var(--border); }
+        .btn-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: var(--danger); }
+        .btn-danger:hover { background: var(--danger); color: white; }
+        .btn-warning { background: rgba(234, 179, 8, 0.1); color: var(--warning); border-color: var(--warning); }
+        .btn-warning:hover { background: var(--warning); color: #000; }
+
+        .grid { display: grid; grid-template-columns: 300px 1fr 350px; grid-template-rows: 2fr 1fr; gap: 15px; flex: 1; height: 100%; }
+        .panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; }
+        .panel-header { padding: 10px 15px; border-bottom: 1px solid var(--border); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); display: flex; justify-content: space-between; }
+        .panel-body { padding: 15px; overflow-y: auto; flex: 1; }
+
+        /* Telemetry & Form */
+        .stat-group { margin-bottom: 15px; }
+        .stat-label { font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px; }
+        .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 700; }
+        .input-group { margin-bottom: 10px; }
+        .input-group select, .input-group input { width: 100%; padding: 8px; background: #000; border: 1px solid var(--border); color: white; border-radius: 4px; font-family: 'Inter'; }
+
+        /* Map & Terminal */
+        #map { height: 100%; width: 100%; background: #000; z-index: 1; }
+        .terminal { background: #000; font-family: 'JetBrains Mono', monospace; padding: 15px; height: 100%; overflow-y: auto; font-size: 0.85rem; }
+        .log-time { color: var(--text-muted); margin-right: 10px; }
+        .log-agent { color: var(--accent); }
+        .log-human { color: var(--warning); }
+        .log-system { color: #8b5cf6; }
+
+        /* Chart & Impact */
+        .chart-container { position: relative; height: 100%; width: 100%; }
+        .impact-val { font-size: 2rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; line-height: 1; margin: 5px 0; }
+        .text-danger { color: var(--danger); }
+        .text-success { color: var(--success); }
+        .text-warning { color: var(--warning); }
+
+        .connection-status { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); display: inline-block; margin-right: 5px; box-shadow: 0 0 8px var(--danger); }
+        .connected { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="brand">
+        <h1>TriNetra 👁️ <span class="badge">v3.0</span></h1>
+        <span style="color: var(--text-muted); font-size: 0.85rem;"><span id="ws-status" class="connection-status"></span>Live WebSockets Active</span>
+    </div>
+    <div class="controls">
+        <span id="clock" style="font-family: 'JetBrains Mono'; color: var(--text-muted);">00:00:00</span>
+        <button class="btn-warning" onclick="toggleOverride()" id="btn-override">MANUAL OVERRIDE: OFF</button>
+        <button class="btn-danger" onclick="resetEnv()">FORCE RESET</button>
+    </div>
+</header>
+
+<div class="grid">
+    <div class="panel" style="grid-row: span 2;">
+        <div class="panel-header">Situational Telemetry</div>
+        <div class="panel-body" id="telemetry-panel">
+            <div class="stat-group" style="background: rgba(34, 197, 94, 0.1); padding: 10px; border: 1px solid var(--success); border-radius: 6px;">
+                <span class="stat-label" style="color: var(--success);">Logistics Budget</span>
+                <span class="stat-value text-success" id="ui-budget">$100,000</span>
+            </div>
+            <hr style="border-top: 1px solid var(--border); margin: 15px 0;">
+            <div class="stat-group"><span class="stat-label">Active Region</span><span class="stat-value" id="ui-region">--</span></div>
+            <div class="stat-group"><span class="stat-label">Forecast</span><span class="stat-value text-warning" id="ui-weather">--</span></div>
+            <div class="stat-group"><span class="stat-label">Risk Severity</span><span class="stat-value" id="ui-severity">--%</span></div>
+            <hr style="border-top: 1px solid var(--border); margin: 15px 0;">
+            <div class="stat-group">
+                <span class="stat-label">Available Resources</span>
+                <div style="display: flex; justify-content: space-between; margin-top: 5px; font-family: 'JetBrains Mono';">
+                    <span title="Boats">🚤 <span style="font-size: 0.65rem; color: var(--text-muted);">BOATS</span> <span id="ui-boats" style="margin-left: 2px;">0</span></span>
+                    <span title="Ambulances">🚑 <span style="font-size: 0.65rem; color: var(--text-muted);">AMB</span> <span id="ui-amb" style="margin-left: 2px;">0</span></span>
+                    <span title="Food Kits">📦 <span style="font-size: 0.65rem; color: var(--text-muted);">FOOD</span> <span id="ui-kits" style="margin-left: 2px;">0</span></span>
+                </div>
+            </div>
+            <hr style="border-top: 1px solid var(--border); margin: 15px 0;">
+            <div class="stat-group"><span class="stat-label">Population at Risk</span><span class="stat-value" id="ui-pop">--</span></div>
+            <div class="stat-group"><span class="stat-label">Casualties</span><span class="stat-value text-danger" id="ui-cas">0</span></div>
+        </div>
+
+        <div class="panel-body" id="override-panel" style="display: none; background: rgba(234, 179, 8, 0.05); border-top: 1px solid var(--warning);">
+            <h3 style="color: var(--warning); margin-bottom: 15px; font-size: 0.9rem;">HUMAN COMMAND PROTOCOL</h3>
+            <div class="input-group">
+                <label class="stat-label">Threat Level</label>
+                <select id="man-threat"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select>
+            </div>
+            <div class="input-group">
+                <label class="stat-label">Target Region Name</label>
+                <input type="text" id="man-region" placeholder="e.g. Mumbai">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <div class="input-group"><label class="stat-label">Boats</label><input type="number" id="man-boats" value="0" min="0"></div>
+                <div class="input-group"><label class="stat-label">Ambulances</label><input type="number" id="man-amb" value="0" min="0"></div>
+            </div>
+            <button class="btn-warning" style="width: 100%; margin-top: 10px;" onclick="submitManualAction()">EXECUTE DIRECTIVE</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">Tactical GIS Map</div>
+        <div id="map"></div>
+    </div>
+
+    <div class="panel" style="grid-row: span 2; display: flex; flex-direction: column;">
+        <div class="panel-header">Evaluation Metrics <span id="ui-step">Step 0/3</span></div>
+
+        <div class="panel-body" style="text-align: center; flex: 0 0 auto; padding-bottom: 25px;">
+            <span class="stat-label">Strategic Score</span>
+            <div class="impact-val text-success" id="ui-score" style="font-size: 3.5rem;">0.00</div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 10px; font-style: italic; min-height: 40px; display: flex; align-items: center; justify-content: center;" id="ui-feedback">Awaiting action...</p>
+        </div>
+
+        <div class="panel-header" style="border-top: 1px solid var(--border);">Action Log</div>
+
+        <div class="terminal" id="terminal-output" style="flex: 1; border-radius: 0; padding-bottom: 20px;"></div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">Severity Trend Analysis</div>
+        <div class="panel-body"><div class="chart-container"><canvas id="severityChart"></canvas></div></div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
