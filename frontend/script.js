@@ -162,7 +162,11 @@ setInterval(() => {
 
 // WebSocket Connection (Connects to your FastAPI Backend)
 function connectWebSocket() {
-    const ws = new WebSocket(`ws://${window.location.host}/ws`);
+    // Automatically use secure WebSockets (wss://) if hosted on Hugging Face
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = window.location.host;
+    const ws = new WebSocket(`${wsProtocol}//${wsHost}/ws`);
+    // Note: If your backend python route is named something other than "/ws", keep your original path at the end!
 
     ws.onopen = () => {
         logToTerminal("WebSocket established. Streaming live telemetry.", "system");

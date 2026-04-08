@@ -17,7 +17,7 @@ client = OpenAI(api_key=HF_TOKEN, base_url=API_BASE_URL)
 TASKS = ["triage_basic", "resource_allocation", "signal_vs_noise"]
 BENCHMARK = "disaster-response-ops"
 MAX_STEPS = 3
-SERVER_URL = "http://127.0.0.1:7860"
+SERVER_URL = "https://anushka070426-trinetra-disaster-ops.hf.space"
 
 # --- AGENT 1: THE INTEL ANALYST ---
 INTEL_PROMPT = textwrap.dedent("""
@@ -49,7 +49,7 @@ Respond ONLY with a valid JSON object matching exactly this schema:
 def run_task(task_id: str):
     print(f"[START] task={task_id} env={BENCHMARK} model={MODEL_NAME}")
 
-    response = requests.get(f"{SERVER_URL}/reset?scenario_id={task_id}")
+    response = requests.post(f"{SERVER_URL}/reset?scenario_id={task_id}")
     obs_dict = response.json()
 
     success = False
