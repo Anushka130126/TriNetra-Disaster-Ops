@@ -79,7 +79,7 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
-@app.get("/reset")
+@app.post("/reset")
 async def reset(scenario_id: str = "triage_basic"):
     state_obj = env.reset(task_id=scenario_id)
     # Broadcast the fresh state to all connected UI clients
