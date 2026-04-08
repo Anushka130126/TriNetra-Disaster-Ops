@@ -173,8 +173,17 @@ function connectWebSocket() {
     };
 
     ws.onmessage = (event) => {
-        const state = JSON.parse(event.data);
-        updateDashboard(state);
+        const message = JSON.parse(event.data);
+
+        // If it's a reset message, zero out the counter
+        if (message.type === "RESET") {
+            currentStep = 0; // The JS variable
+            document.getElementById('step-count').innerText = "0/3"; // The UI text
+            updateDashboard(message.data); // Update the map/stats
+        } else {
+            // ... your existing logic for regular steps ...
+            updateDashboard(message);
+        }
     };
 
     ws.onclose = () => {
@@ -261,15 +270,19 @@ async function submitManualAction() {
     }
 }
 
-async function resetEnv() {
-    logToTerminal("INITIATING FORCE RESET...", "system");
-    try {
-        // Ping the FastAPI reset endpoint for the default scenario
-        await fetch('/reset?scenario_id=triage_basic');
-        logToTerminal("ENVIRONMENT RESET SUCCESSFUL", "system");
-    } catch (error) {
-        logToTerminal(`RESET CONNECTION FAILED`, "system");
-    }
+async function resetEnvironment() {
+    // 1. Clear UI immediately for instant feedback
+    document.getElementById('step-count').innerText = "0/3";
+    document.getElementById('log-container').innerHTML = "<div>Environment Resetting...</div>";
+
+    // 2. Clear your local JS variables
+    currentStep = 0;
+
+    // 3. Send the POST request to the backend
+    await fetch('/reset', { method: 'POST' });
+
+    // 4. Force the map to clear old markers
+    clearMapMarkers();
 }
 
 // Start everything up
